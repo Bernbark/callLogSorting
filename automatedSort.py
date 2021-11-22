@@ -623,6 +623,7 @@ check_if_notify = tk.IntVar()
 notification_checkbox = tk.Checkbutton(option_menus_frame,text="Notify When Complete",variable=check_if_notify)
 notification_checkbox.pack(side=tk.RIGHT)
 
+#Start the GUI
 window.mainloop()
 
 

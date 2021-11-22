@@ -171,10 +171,10 @@ def get_all_household_id():
         for both voicemail and disconnected calls
         """
     global disconnected_filename
-    disconnected_filename = onDisconnectedSaveEntry()
+    disconnected_filename = on_disconnected_save_entry()
 
     global voicemail_filename
-    voicemail_filename = onVoicemailSaveEntry()
+    voicemail_filename = on_voicemail_save_entry()
     if voicemail_filename == "":
         voicemail_filename = "VoicemailCallSheet.csv"
     else:
@@ -186,11 +186,18 @@ def get_all_household_id():
     create_csv_files()
     getHouseholdID(household_id_filename, call_logs_filename, path_str + "\\"+ voicemail_filename, voicemail)
     getHouseholdID(household_id_filename, call_logs_filename, path_str + "\\"+disconnected_filename, disconnected)
+    greeting.config(text="Sorting Complete!")
 
 
 # Functionality to browse for files, starting with CSV files as the default type to find, uses built-in
 # file explorer on Windows
-def browseFiles():
+def browse_for_call_logs():
+    """
+    Method which is used to browse for files, it is hooked up to the Browse for Call Logs button, so this one is used
+    to search for and double check the validity of call logs files, uses built-in file explorer for Windows
+    :return:
+    """
+    # Sets up browsing with the ability to search all files, .csv, or .txt files, defaulted to csv
     filename = filedialog.askopenfilename(initialdir = "/",
                                           title = "Select Unsorted Call Logs",
                                           filetypes = (("CSV files",
@@ -200,6 +207,7 @@ def browseFiles():
                                                        ("all files",
                                                         "*.*")))
     try:
+        # Read the browsed for file to check for validity
         with open(filename) as spread_sheet:
             # DictReader will help pull headers from spreadsheets
             d_reader = csv.DictReader(spread_sheet)
@@ -211,18 +219,17 @@ def browseFiles():
                 label_call_log_found.config(text = "Missing Unsorted\n"
                                                    "Call Logs Sheet",
                                             bg = colors['pink'])
-            # Otherwise run the code
+            # Otherwise alert the user that their file probably works
             else:
-
                 greeting.config(text="File Fits Specifications")
                 label_call_log_found.config(bg=colors['green'],
                                                 text="File Found")
 
-    except (FileNotFoundError,UnicodeDecodeError) as e:
+    except (FileNotFoundError, UnicodeDecodeError) as e:
         greeting.config(text="File Not Found\n"
                              "Please Browse for Proper CSV File")
-
-    label_file_explorer.configure(text="File Opened: "+filename)
+    label_file_explorer.config(font=("Helvetica", 11))
+    label_file_explorer.configure(text=filename)
     # make sure we're reaching to the correct scope, we're trying to change outer scope call_logs_found
     global call_logs_found
     call_logs_found = True
@@ -235,7 +242,12 @@ def browseFiles():
     call_logs_filename = filename
 
 
-def browseForHouseholdIDSheet():
+def browse_for_household_id_sheet():
+    """
+    Method which is used to browse for files, it is hooked up to the Browse for Household ID button, so this one is used
+    to search for and double check the validity of household ID files, uses built-in file explorer for Windows
+    :return:
+    """
     filename = filedialog.askopenfilename(initialdir = "/",
                                           title = "Select File With Household IDs",
                                           filetypes = (("CSV files",
@@ -264,26 +276,42 @@ def browseForHouseholdIDSheet():
                 label_household_id_found.config(bg=colors['green'],
                                                 text="File Found")
                 greeting.config(text="File Fits Specifications")
-
+    # Have to make sure the user isn't putting strange files in
     except (FileNotFoundError, UnicodeDecodeError) as e:
         greeting.config(text="File Not Found\n"
                              "Please Browse for Proper CSV File")
-
-    label_file_explorer.configure(text="File Opened: "+filename)
+    # Display file name
+    label_file_explorer.config(font=("Helvetica", 11))
+    label_file_explorer.configure(text=filename)
+    # This needs to be changed globally so that the second browse method is aware of the first's success
     global household_id_found
     household_id_found = True
-
+    # If both browses were successful then we activate the sort button
     if call_logs_found and household_id_found:
         button_sort.config(state="normal")
+    # Otherwise disable it
     else:
         button_sort.config(state="disabled")
+    # This may not be the right way to do things, but because of how I adapted the UI, this seemed like the easiest way
+    # to update the filename globally as opposed to returning a value
     global household_id_filename
     household_id_filename = filename
+
+def on_disconnected_save_entry():
+
+    user_given_name = disconnected_file_name_entry.get()
+    return user_given_name
+
+
+def on_voicemail_save_entry():
+
+    user_given_name = voicemail_file_name_entry.get()
+    return user_given_name
 
 
 frame_width = 40
 frame_height = 5
-
+# Make a dictionary to track color keys with their matching hex code values
 colors = {
     'salmon': '#FF7F7F',
     'dark grey': '#404040',
@@ -296,33 +324,40 @@ colors = {
     'green': '#A3CFA7',
     'pink': '#F7DCEC'
 }
+padding = 3
+"""
+        This section is the GUI, made from tkinter which is built into python, an attempt was made to make the UI
+        user-friendly, not harsh on the eyes, and simple but with enough information to make it clear what is happening
+        NOTE: the order in which objects are packed can greatly shift the UI in unexpected ways, careful moving things.
+        Also, must refer to widgets in tkinter with the prefix tk. in order to use them (ex: tk.Frame)
+"""
 
-
+# Create the root window for the whole GUI
 window = tix.Tk()
-window.geometry("900x900")
+# Set the window to fit the user's screen
+window.geometry("{0}x{1}+0+0".format(
+            window.winfo_screenwidth()-padding, window.winfo_screenheight()-padding))
 window.title("Call Sheet Sorter")
 window.config(background=colors['dark grey'],
               bd=10)
-
-tip = tix.Balloon(window)
-
+# Create an image
 company_logo = ImageTk.PhotoImage(Image.open("trgicon.PNG"))
-
+# Create a frame to hold the company logo and potentially other information
 info_frame = tk.Frame(window)
 info_frame.config(bg=colors['dark grey'])
 info_frame.pack(pady=5,padx=5)
-
+# Practicing using frames to give a border to other frames
 topFrameBorderColor = tk.Frame(window,
                                width=frame_width,
                                height=frame_height
                                )
 topFrameBorderColor.config(bg=colors['dark purple'])
 topFrameBorderColor.pack(padx=4,pady=4,)
-
+# The top frame which holds the greeting and informational label
 topFrame = tk.Frame(topFrameBorderColor)
 topFrame.config(bg=colors['light blue'])
 topFrame.pack(padx=5, pady=5)
-
+# Greeting to the user and other various information such as success or failure of browsing/sort
 greeting = tk.Label(
     topFrame,
     text="Hello, "+username+"!",
@@ -333,94 +368,70 @@ greeting = tk.Label(
     height=frame_height
 )
 greeting.pack(padx=5,pady=5)
-
-canvas = tk.Canvas(info_frame, width=450, height=80, bg=colors['light blue'])
-canvas.create_image(15,7, anchor=tk.NW,image=company_logo)
-canvas.pack(padx=5, pady=5)
-
-middleFrame = tk.Frame(window,)
-middleFrame.pack(padx=10,pady=10)
-
-middleTopFrame = tk.Frame(middleFrame,
-                          bg=colors['dark grey'])
-middleTopFrame.pack(side=tk.TOP)
-voicemail_label = tk.Label(middleTopFrame,
-                              text="Enter File Name for Voicemail Calls File",
-                            borderwidth=12)
-voicemail_label.pack(side=tk.LEFT,padx=5)
-voicemail_file_name_entry = tk.Entry(middleTopFrame,
-                                   background="white",
-                                   bd=4,
-                                   fg="black")
-voicemail_file_name_entry.insert(0,'VoicemailCallSheet')
-voicemail_file_name_entry.pack(padx=5, pady=5, side=tk.LEFT)
-middleBottomFrame = tk.Frame(middleFrame,
-                             bg=colors['dark grey'])
-middleBottomFrame.pack(side=tk.BOTTOM)
-disconnected_label = tk.Label(middleBottomFrame,
-                              text="Enter File Name for Disconnected Calls File")
-disconnected_label.pack(side=tk.LEFT,padx=5,pady=10)
-disconnected_file_name_entry = tk.Entry(middleBottomFrame,
-                           background="white",
-                           bd=4,
-                           fg="black")
-disconnected_file_name_entry.insert(0,'DisconnectedCallSheet')
-disconnected_file_name_entry.pack(padx=5,pady=5,side=tk.LEFT)
-tip.bind_widget(disconnected_file_name_entry,balloonmsg="Enter file name for voicemail log\n"
-                                           "or leave blank for default name\n"
-                                           "(Will be saved as .csv)")
-
-bottomFrame = tk.Frame(window)
-bottomFrame.config(background=colors['blue'])
-bottomFrame.config(borderwidth=10)
-bottomFrame.config(bg=colors['light blue'])
-# Have to specifically call on tk to get the right frame type
-bottomFrame.pack(side=tk.TOP)
-
-button_sort = tk.Button(bottomFrame,
-                        text="Sort",
-                        borderwidth=10,
-                        font=("Helvetica", 25),
-                        state="disabled",
-                        command = lambda : get_all_household_id())
-button_sort.pack(padx=5,pady=3,side=tk.TOP)
-tip.bind_widget(button_sort,balloonmsg="Hit this to make 2 CSV files,\n"
-                                       "one for calls that went to voicemail,\n"
-                                       "and another for disconnected calls")
-
-bottomLeftFrame= tk.Frame(bottomFrame)
-bottomLeftFrame.config(background=colors['blue'])
-bottomLeftFrame.config(borderwidth=10)
-bottomLeftFrame.pack(side=tk.LEFT)
-
-bottomRightFrame = tk.Frame(bottomFrame)
-bottomRightFrame.config(background=colors['blue'])
-bottomRightFrame.config(borderwidth=10)
-bottomRightFrame.pack(side=tk.RIGHT)
-
-
-def onDisconnectedSaveEntry():
-
-    user_given_name = disconnected_file_name_entry.get()
-    return user_given_name
-
-
-def onVoicemailSaveEntry():
-
-    user_given_name = voicemail_file_name_entry.get()
-    return user_given_name
-
-
+# More information for the user, changes to display file names browsed for
 label_file_explorer = tk.Label(topFrame,
                             text = "Browse For Household ID Sheet And\n"
                                    "Browse for Unsorted Call Logs\n"
                                     "If you do not enter file names"
                                     " default values will be used",
                             width = 70, height = 4,
-                            font=("Helvetica", 15),
+                            font=("Helvetica", 13),
                             fg = "blue")
 label_file_explorer.pack(padx=5, pady=5, side=tk.BOTTOM)
-
+# Holds the company logo
+canvas = tk.Canvas(info_frame, width=450, height=80, bg=colors['light blue'])
+canvas.create_image(15,7, anchor=tk.NW,image=company_logo)
+canvas.pack(padx=5, pady=5)
+# Frame which holds the entry sections and their labels (where users can change file names)
+middleFrame = tk.Frame(window,)
+middleFrame.pack(padx=10,pady=10)
+# Goes inside of middleFrame for organizing the placement of entry and label
+middleTopFrame = tk.Frame(middleFrame,
+                          bg=colors['dark grey'])
+middleTopFrame.pack(side=tk.TOP)
+# Information for user
+voicemail_label = tk.Label(middleTopFrame,
+                              text="Enter File Name for Voicemail Calls File",
+                            borderwidth=12)
+voicemail_label.pack(side=tk.LEFT,padx=5)
+# Place for user to enter file name
+voicemail_file_name_entry = tk.Entry(middleTopFrame,
+                                   background="white",
+                                   bd=4,
+                                   fg="black")
+voicemail_file_name_entry.insert(0,'VoicemailCallSheet')
+voicemail_file_name_entry.pack(padx=5, pady=5, side=tk.LEFT)
+# Goes inside of middleFrame for organizing the placement of entry and label
+middleBottomFrame = tk.Frame(middleFrame,
+                             bg=colors['dark grey'])
+middleBottomFrame.pack(side=tk.BOTTOM)
+# Information for user
+disconnected_label = tk.Label(middleBottomFrame,
+                              text="Enter File Name for Disconnected Calls File")
+disconnected_label.pack(side=tk.LEFT,padx=5,pady=10)
+# Place for user to enter file name
+disconnected_file_name_entry = tk.Entry(middleBottomFrame,
+                           background="white",
+                           bd=4,
+                           fg="black")
+disconnected_file_name_entry.insert(0,'DisconnectedCallSheet')
+disconnected_file_name_entry.pack(padx=5,pady=5,side=tk.LEFT)
+# Holds Browse Buttons and Indicators
+bottomFrame = tk.Frame(window)
+bottomFrame.config(borderwidth=4)
+bottomFrame.config(bg=colors['dark purple'])
+bottomFrame.pack(side=tk.TOP)
+# Organizes browse buttons
+bottomLeftFrame= tk.Frame(bottomFrame)
+bottomLeftFrame.config(background=colors['blue'])
+bottomLeftFrame.config(borderwidth=1)
+bottomLeftFrame.pack(side=tk.LEFT)
+# Organizes browse buttons
+bottomRightFrame = tk.Frame(bottomFrame)
+bottomRightFrame.config(background=colors['blue'])
+bottomRightFrame.config(borderwidth=1)
+bottomRightFrame.pack(side=tk.RIGHT)
+# Label indicating success or failure in browsing
 label_household_id_found = tk.Label(bottomLeftFrame,
                                     text = "Missing Household\n"
                                            "ID Sheet",
@@ -428,40 +439,49 @@ label_household_id_found = tk.Label(bottomLeftFrame,
                                     height = 10,
                                     bg = colors['pink'],
                                     )
-label_household_id_found.pack(side=tk.BOTTOM, padx=30)
-
+label_household_id_found.pack(side=tk.BOTTOM, padx=30, pady=5)
+# Button to initiate file explorer and browse for files
 button_browse_for_ids = tk.Button(bottomLeftFrame,
                         bg=colors['darker grey'],
                         borderwidth=10,
                         font=("Helvetica", 25),
                         text = "Browse For IDs",
 
-                        command = browseForHouseholdIDSheet,
+                        command = browse_for_household_id_sheet,
                         )
 button_browse_for_ids.pack(side=tk.TOP,
                             padx=30,
                             pady=5)
 
-
+# Button to initiate file explorer and browse for files
 button_browse_for_call_logs = tk.Button(bottomRightFrame,
                         bg=colors['darker grey'],
                         borderwidth=10,
                         text = "Browse For Call Logs",
                         font=("Helvetica", 25),
-                        command = browseFiles)
+                        command = browse_for_call_logs)
 button_browse_for_call_logs.pack(side=tk.TOP,
                             padx=30,
                             pady=5)
-
+# Label indicating success or failure in browsing
 label_call_log_found = tk.Label(bottomRightFrame,
                                     text = "Missing Unsorted\n"
                                            "Call Logs Sheet",
                                     width = 20,
                                     height = 10,
                                     bg = colors['pink'])
-label_call_log_found.pack(side=tk.BOTTOM,padx=30)
+label_call_log_found.pack(side=tk.BOTTOM,padx=30, pady=5)
+# Button used to sort manually
+button_sort = tk.Button(bottomFrame,
+                        text="Sort",
+                        borderwidth=10,
+                        font=("Helvetica", 25),
+                        state="disabled",
+                        command = lambda : get_all_household_id())
+button_sort.pack(padx=5,pady=3,side=tk.TOP)
 
 
+# Start the GUI
 window.mainloop()
 
 
