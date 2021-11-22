@@ -33,12 +33,14 @@ am_pm_runtime = "AM"
 # Grabbing user name for creation of a Desktop folder
 username = getpass.getuser()
 
-# C:\Users\Kory Stennett\Desktop\CallReports is the format
-path_str = "C:\\Users\\"+username+"\\Desktop\\CallReports"
-
+# C:\Users\UserName\Desktop\CallReports is the format
+path_str = "C:\\Users\\" + username + "\\Desktop\\CallReports"
+disconnected_path_str = "C:\\Users\\" + username + "\\Desktop\\CallReports\\DisconnectedCalls"
 # If the directory does not exist, we make it using the above path
 if not os.path.isdir(path_str):
     os.makedirs(path_str)
+if not os.path.isdir(disconnected_path_str):
+    os.makedirs(disconnected_path_str)
 
 
 # Check if CSV file exists and create if not, then add headers
@@ -52,18 +54,18 @@ def create_csv_files():
 
     # Alter the file name to be a default if nothing was chosen
     if disconnected_filename == "":
-        disconnected_file_path = path_str + "\\DisconnectedCallSheet.csv"
+        disconnected_file_path = disconnected_path_str + "\\DisconnectedCallSheet.csv"
     # Otherwise use the file name provided by the user
     else:
-        disconnected_file_path = path_str + "\\"+disconnected_filename
+        disconnected_file_path = disconnected_path_str + "\\"+disconnected_filename
         # Catchall in case things go south with the naming of files, force it back to default
-        if disconnected_file_path == path_str+"\\"+".csv":
-            disconnected_file_path = path_str + "\\DisconnectedCallSheet.csv"
+        if disconnected_file_path == disconnected_path_str+"\\"+".csv":
+            disconnected_file_path = disconnected_path_str + "\\DisconnectedCallSheet.csv"
     # Create a bool to check if the file path exists
     file_exists = os.path.isfile(disconnected_file_path)
     try:
         # Either create and add headers, or do nothing, thus the 'a' setting
-        with open(disconnected_file_path, 'a') as output_file:
+        with open(disconnected_file_path, 'a',newline='',) as output_file:
             writer = csv.writer(output_file)
             # set header if file doesn't exist
             if not file_exists:
@@ -81,7 +83,7 @@ def create_csv_files():
             voicemail_filepath = path_str + "\\VoicemailCallSheet.csv"
     file_exists = os.path.isfile(voicemail_filepath)
     try:
-        with open(voicemail_filepath, 'a') as output_file:
+        with open(voicemail_filepath, 'a',newline='',) as output_file:
             writer = csv.writer(output_file)
             # set header if file doesn't exist
             if not file_exists:
@@ -92,9 +94,9 @@ def create_csv_files():
 
 def get_household_id(household_ids,call_logs,file_path,target_word):
     """
-    This method takes two files and searches and strips them of the appropriate information in order to make a comparison
-    and sort based on whether the customer disconnected or a voicemail was left, and then puts that information into
-    a csv file based on the given file path.
+    This method takes two files and searches and strips them of the appropriate information in order to make a
+    comparison and sort based on whether the customer disconnected or a voicemail was left, and then puts that
+    information into a csv file based on the given file path.
     :param household_ids: path to file chosen by user to compare household IDs
     :param call_logs: path to file chosen by user that contains unsorted call logs
     :param file_path: either path to disconnected or voicemail file which will have new records appended to it
@@ -107,7 +109,7 @@ def get_household_id(household_ids,call_logs,file_path,target_word):
     id_index = 0
 
     # Open the household IDs file and strip the header
-    with open(household_ids, 'r') as id_log:
+    with open(household_ids, 'r',newline='',) as id_log:
         reader = csv.reader(id_log)
         d_reader = csv.DictReader(id_log)
         # setting the headers to a variable
@@ -123,7 +125,7 @@ def get_household_id(household_ids,call_logs,file_path,target_word):
         for line in reader:
             id_rows.append(line)
 
-    with open(call_logs, 'r') as call_log:
+    with open(call_logs, 'r',newline='',) as call_log:
         # DictReader will help pull headers from spreadsheets
         d_reader = csv.DictReader(call_log)
         # setting the headers to a variable
@@ -162,9 +164,10 @@ def get_household_id(household_ids,call_logs,file_path,target_word):
                 # Check if the current entry matches the id fro the current id_row and form a new entry tuple with the
                 # right info
                 if entry[0] == id[1]:
-                    entry = (id[id_index],)+entry
+                    # Since we made entry ourselves, we know that entry[1] will be the timestamp for that entry
+                    newEntry = (id[id_index],entry[1])
                     # Finally write that new entry into the output file
-                    with open(file_path, 'a+') as output_file:
+                    with open(file_path, 'a+',newline='',) as output_file:
                         writer = csv.writer(output_file)
                         writer.writerow(entry)
         # Probably not necessary, something left over from testing
@@ -198,7 +201,8 @@ def get_all_household_id():
     # Creates the voicemail sorted file
     get_household_id(household_id_filename, call_logs_filename, path_str + "\\" + voicemail_filename, voicemail)
     # Creates the disconnected call file
-    get_household_id(household_id_filename, call_logs_filename, path_str + "\\" + disconnected_filename, disconnected)
+    get_household_id(household_id_filename, call_logs_filename, disconnected_path_str + "\\" + disconnected_filename,
+                     disconnected)
     # Get sorting time
     current_time = get_hour_and_minutes()
     # Update the user on when the sorting happened

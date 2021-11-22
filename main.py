@@ -11,7 +11,7 @@ from PIL import ImageTk, Image
 This script allows a user to browse for two files to compare against, using phone numbers to match IDs to users and sort
 them into 2 new files. Both files include a Household ID as well as a timestamp for when they were called.
 The first file is for all users where the phone call reached their voicemail.
-The second file is for all users where the phone call was disconnected
+The second file is for all users where the phone call was disconnected.
 """
 
 disconnected_filename = ''
@@ -27,13 +27,14 @@ call_logs_filename = ''
 # Grabbing user name for creation of a Desktop folder
 username = getpass.getuser()
 
-# C:\Users\Kory Stennett\Desktop\CallReports is the format
+# C:\Users\UserName\Desktop\CallReports is the format
 path_str = "C:\\Users\\" + username + "\\Desktop\\CallReports"
-
+disconnected_path_str = "C:\\Users\\" + username + "\\Desktop\\CallReports\\DisconnectedCalls"
 # If the directory does not exist, we make it using the above path
 if not os.path.isdir(path_str):
     os.makedirs(path_str)
-
+if not os.path.isdir(disconnected_path_str):
+    os.makedirs(disconnected_path_str)
 
 # Check if CSV file exists and create if not, then add headers
 # Headers are CallCompletedTimeStamp,PhoneNumberDialed,Response
@@ -46,22 +47,22 @@ def create_csv_files():
 
     # Alter the file name to be a default if nothing was chosen
     if disconnected_filename == "":
-        disconnected_file_path = path_str + "\\DisconnectedCallSheet.csv"
+        disconnected_file_path = disconnected_path_str + "\\DisconnectedCallSheet.csv"
     # Otherwise use the file name provided by the user
     else:
-        disconnected_file_path = path_str + "\\" + disconnected_filename
+        disconnected_file_path = disconnected_path_str + "\\" + disconnected_filename
         # Catchall in case things go south with the naming of files, force it back to default
-        if disconnected_file_path == path_str + "\\" + ".csv":
-            disconnected_file_path = path_str + "\\DisconnectedCallSheet.csv"
+        if disconnected_file_path == disconnected_path_str + "\\" + ".csv":
+            disconnected_file_path = disconnected_path_str + "\\DisconnectedCallSheet.csv"
     # Create a bool to check if the file path exists
     file_exists = os.path.isfile(disconnected_file_path)
     try:
         # Either create and add headers, or do nothing, thus the 'a' setting
-        with open(disconnected_file_path, 'a') as output_file:
+        with open(disconnected_file_path, 'a',newline='',) as output_file:
             writer = csv.writer(output_file)
             # set header if file doesn't exist
             if not file_exists:
-                writer.writerow(["Household ID", "Phone Number", "Call Timestamp"])
+                writer.writerow(["Household ID", "Call Timestamp"])
     # If the file exists then do nothing
     except FileExistsError:
         pass
@@ -75,20 +76,20 @@ def create_csv_files():
             voicemail_filepath = path_str + "\\VoicemailCallSheet.csv"
     file_exists = os.path.isfile(voicemail_filepath)
     try:
-        with open(voicemail_filepath, 'a') as output_file:
+        with open(voicemail_filepath, 'a',newline='',) as output_file:
             writer = csv.writer(output_file)
             # set header if file doesn't exist
             if not file_exists:
-                writer.writerow(["Household ID", "Phone Number", "Call Timestamp"])
+                writer.writerow(["Household ID", "Call Timestamp"])
     except FileExistsError:
         pass
 
 
-def getHouseholdID(household_ids, call_logs, file_path, target_word):
+def get_household_id(household_ids,call_logs,file_path,target_word):
     """
-    This method takes two files and searches and strips them of the appropriate information in order to make a comparison
-    and sort based on whether the customer disconnected or a voicemail was left, and then puts that information into
-    a csv file based on the given file path.
+    This method takes two files and searches and strips them of the appropriate information in order to make a
+    comparison and sort based on whether the customer disconnected or a voicemail was left, and then puts that
+    information into a csv file based on the given file path.
     :param household_ids: path to file chosen by user to compare household IDs
     :param call_logs: path to file chosen by user that contains unsorted call logs
     :param file_path: either path to disconnected or voicemail file which will have new records appended to it
@@ -97,12 +98,11 @@ def getHouseholdID(household_ids, call_logs, file_path, target_word):
     """
     # holds the information from household IDs file
     id_rows = []
-    #
-    count = 0
+    # will be used throughout in order to track which column the id exists in the .csv file
     id_index = 0
 
     # Open the household IDs file and strip the header
-    with open(household_ids, 'r') as id_log:
+    with open(household_ids, 'r',newline='',) as id_log:
         reader = csv.reader(id_log)
         d_reader = csv.DictReader(id_log)
         # setting the headers to a variable
@@ -113,12 +113,12 @@ def getHouseholdID(household_ids, call_logs, file_path, target_word):
             if "ID" in header:
                 break
             else:
-                id_index += 1
+                id_index+=1
+        # read the entire document, line by line, as entrys into id_rows
         for line in reader:
             id_rows.append(line)
 
-    phone_rows = []
-    with open(call_logs, 'r') as call_log:
+    with open(call_logs, 'r',newline='',) as call_log:
         # DictReader will help pull headers from spreadsheets
         d_reader = csv.DictReader(call_log)
         # setting the headers to a variable
@@ -129,6 +129,7 @@ def getHouseholdID(household_ids, call_logs, file_path, target_word):
         target_index = 0
         phone_index = 0
         date_index = 0
+        # Messy way of finding headers, can probably be combined into a single loop
         for header in headers:
             if header == "Response":
                 break
@@ -144,23 +145,27 @@ def getHouseholdID(household_ids, call_logs, file_path, target_word):
                 break
             else:
                 date_index += 1
-
+        # Depending on if we're checking for Disconnected or Answering_Machine target word, add the correct lines to
+        # rows list, with only the correct information from each line, as a tuple
         for line in reader:
             if target_word in line[target_index]:
-                rows.append((line[phone_index], line[date_index]))
-
+                rows.append((line[phone_index],line[date_index]))
+        # Now that rows is formed
         for entry in rows:
+            # For every id in id_rows
             for id in id_rows:
+                # Check if the current entry matches the id fro the current id_row and form a new entry tuple with the
+                # right info
                 if entry[0] == id[1]:
-                    entry = (id[id_index],) + entry
-
-                    with open(file_path, 'a+') as output_file:
+                    # Since we made entry ourselves, we know that entry[1] will be the timestamp for that entry
+                    newEntry = (id[id_index],entry[1])
+                    # Finally write that new entry into the output file
+                    with open(file_path, 'a+',newline='',) as output_file:
                         writer = csv.writer(output_file)
                         writer.writerow(entry)
-
-            count += 1
-
+        # Probably not necessary, something left over from testing
         rows.clear()
+        # Same as above
         id_rows.clear()
 
 # for use with the button to sort once files are selected
@@ -184,8 +189,8 @@ def get_all_household_id():
     else:
         disconnected_filename = disconnected_filename + ".csv"
     create_csv_files()
-    getHouseholdID(household_id_filename, call_logs_filename, path_str + "\\"+ voicemail_filename, voicemail)
-    getHouseholdID(household_id_filename, call_logs_filename, path_str + "\\"+disconnected_filename, disconnected)
+    get_household_id(household_id_filename, call_logs_filename, path_str + "\\"+ voicemail_filename, voicemail)
+    get_household_id(household_id_filename, call_logs_filename, disconnected_path_str + "\\"+disconnected_filename, disconnected)
     greeting.config(text="Sorting Complete!")
 
 
