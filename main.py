@@ -6,7 +6,13 @@ import csv
 import os
 import getpass
 from PIL import ImageTk, Image
-from apscheduler.schedulers.blocking import BlockingScheduler
+
+"""
+This script allows a user to browse for two files to compare against, using phone numbers to match IDs to users and sort
+them into 2 new files. Both files include a Household ID as well as a timestamp for when they were called.
+The first file is for all users where the phone call reached their voicemail.
+The second file is for all users where the phone call was disconnected
+"""
 
 disconnected_filename = ''
 voicemail_filename = ''
@@ -18,30 +24,11 @@ household_id_filename = ''
 call_logs_found = False
 call_logs_filename = ''
 
-
-def cron_process():
-    print ('periodic print')
-
-
-scheduler = BlockingScheduler()
-scheduler.add_job(cron_process, 'cron', day='*', hour='1', minute='57',second='0')
-#scheduler.start()
-
-"""
-# If the number is disconnected then the script should, initially, 
-# generate a Disconnected file in a seperate folder, 
-# and if the file already exists append the new results to it.
-"""
-
-"""
-Need folder to be made automatically 
-"""
-
 # Grabbing user name for creation of a Desktop folder
 username = getpass.getuser()
 
 # C:\Users\Kory Stennett\Desktop\CallReports is the format
-path_str = "C:\\Users\\"+username+"\\Desktop\\CallReports"
+path_str = "C:\\Users\\" + username + "\\Desktop\\CallReports"
 
 # If the directory does not exist, we make it using the above path
 if not os.path.isdir(path_str):
@@ -52,62 +39,82 @@ if not os.path.isdir(path_str):
 # Headers are CallCompletedTimeStamp,PhoneNumberDialed,Response
 # ExactBillingDurationInSeconds,RoundedBillingDurationInMinutes
 def create_csv_files():
-    # make sure we need a header by checking if we've already made this file
+    """
+    This method will create 2 separate CSV files and apply headers to them if they don't exist yet
+    :return:
+    """
 
-
+    # Alter the file name to be a default if nothing was chosen
     if disconnected_filename == "":
         disconnected_file_path = path_str + "\\DisconnectedCallSheet.csv"
+    # Otherwise use the file name provided by the user
     else:
-        disconnected_file_path = path_str + "\\"+disconnected_filename
-        if disconnected_file_path == path_str+"\\"+".csv":
+        disconnected_file_path = path_str + "\\" + disconnected_filename
+        # Catchall in case things go south with the naming of files, force it back to default
+        if disconnected_file_path == path_str + "\\" + ".csv":
             disconnected_file_path = path_str + "\\DisconnectedCallSheet.csv"
-    print(disconnected_file_path)
+    # Create a bool to check if the file path exists
     file_exists = os.path.isfile(disconnected_file_path)
     try:
+        # Either create and add headers, or do nothing, thus the 'a' setting
         with open(disconnected_file_path, 'a') as output_file:
             writer = csv.writer(output_file)
             # set header if file doesn't exist
             if not file_exists:
-                writer.writerow(["Household ID","Phone Number","Call Timestamp"])
+                writer.writerow(["Household ID", "Phone Number", "Call Timestamp"])
+    # If the file exists then do nothing
     except FileExistsError:
         pass
-    print(disconnected_filename + " disconnected file name")
 
+    # This is the same as thing as above except for the voicemail file name
     if voicemail_filename == "":
         voicemail_filepath = path_str + "\\VoicemailCallSheet.csv"
     else:
-        voicemail_filepath = path_str + "\\"+voicemail_filename
-        if voicemail_filepath == path_str+"\\"+".csv":
+        voicemail_filepath = path_str + "\\" + voicemail_filename
+        if voicemail_filepath == path_str + "\\" + ".csv":
             voicemail_filepath = path_str + "\\VoicemailCallSheet.csv"
-    print(voicemail_filepath)
     file_exists = os.path.isfile(voicemail_filepath)
     try:
         with open(voicemail_filepath, 'a') as output_file:
             writer = csv.writer(output_file)
             # set header if file doesn't exist
             if not file_exists:
-                writer.writerow(["Household ID","Phone Number","Call Timestamp"])
+                writer.writerow(["Household ID", "Phone Number", "Call Timestamp"])
     except FileExistsError:
         pass
-    print(voicemail_filename + " voicemail file name")
 
 
-def getHouseholdID(household_ids,call_logs,file_path,target_word):
+def getHouseholdID(household_ids, call_logs, file_path, target_word):
+    """
+    This method takes two files and searches and strips them of the appropriate information in order to make a comparison
+    and sort based on whether the customer disconnected or a voicemail was left, and then puts that information into
+    a csv file based on the given file path.
+    :param household_ids: path to file chosen by user to compare household IDs
+    :param call_logs: path to file chosen by user that contains unsorted call logs
+    :param file_path: either path to disconnected or voicemail file which will have new records appended to it
+    :param target_word: target word to be searched and sorted, in this case Disconnected or Answering_Machine
+    :return: nothing
+    """
+    # holds the information from household IDs file
     id_rows = []
+    #
     count = 0
     id_index = 0
+
+    # Open the household IDs file and strip the header
     with open(household_ids, 'r') as id_log:
         reader = csv.reader(id_log)
         d_reader = csv.DictReader(id_log)
         # setting the headers to a variable
         headers = d_reader.fieldnames
+        # once the header for ID is found, break, otherwise keep increasing the id_index
+        # this is useful if we know the headers ahead of time
         for header in headers:
             if "ID" in header:
                 break
             else:
-                id_index+=1
+                id_index += 1
         for line in reader:
-
             id_rows.append(line)
 
     phone_rows = []
@@ -117,6 +124,8 @@ def getHouseholdID(household_ids,call_logs,file_path,target_word):
         # setting the headers to a variable
         headers = d_reader.fieldnames
         reader = csv.reader(call_log)
+        # these indexes are used to give some fluidity to finding the proper column from which to strip information from
+        # .csv files, we can call on id_rows[id_index] knowing that for every row in that index will hold info we want
         target_index = 0
         phone_index = 0
         date_index = 0
@@ -135,20 +144,15 @@ def getHouseholdID(household_ids,call_logs,file_path,target_word):
                 break
             else:
                 date_index += 1
-        date_list = []
+
         for line in reader:
             if target_word in line[target_index]:
-                #print(line[date_index])
-
-
-
-                rows.append((line[phone_index],line[date_index]))
-
+                rows.append((line[phone_index], line[date_index]))
 
         for entry in rows:
             for id in id_rows:
                 if entry[0] == id[1]:
-                    entry = (id[id_index],)+entry
+                    entry = (id[id_index],) + entry
 
                     with open(file_path, 'a+') as output_file:
                         writer = csv.writer(output_file)
@@ -159,25 +163,13 @@ def getHouseholdID(household_ids,call_logs,file_path,target_word):
         rows.clear()
         id_rows.clear()
 
-    #with open(file_path,'a') as output_file:
-
-        #writer = csv.writer(output_file)
-        #writer.writerows(phone_rows)
-        """
-        for row1, row2 in zip_longest(phone_rows, id_rows):
-            try:
-                if row1[1] == row2[1]:
-                    writer.writerow(rows)
-                    rows.clear()
-                else:
-                    pass
-            except TypeError:
-                pass
-                """
-
-
 # for use with the button to sort once files are selected
 def get_all_household_id():
+    """
+        When user hits the sort button, this method will grab the file names provided by the user, or provide default
+        names, and then create CSV files or append to them if they exist already, while also getting the ID and timestamp
+        for both voicemail and disconnected calls
+        """
     global disconnected_filename
     disconnected_filename = onDisconnectedSaveEntry()
 
@@ -195,70 +187,6 @@ def get_all_household_id():
     getHouseholdID(household_id_filename, call_logs_filename, path_str + "\\"+ voicemail_filename, voicemail)
     getHouseholdID(household_id_filename, call_logs_filename, path_str + "\\"+disconnected_filename, disconnected)
 
-
-"""
-Need to search for all successful answering machine calls and disconnected calls
-"""
-
-"""
-# This function takes a string and searches for instances of that string in a
-# csv file then fills another csv file with only the rows targeted
-# Note that we are checking the 3rd column for "Answering_Machine" or "Disconnected"
-def fill_call_sheet(target_word,filename):
-    try:
-        with open(filename) as spread_sheet:
-            # DictReader will help pull headers from spreadsheets
-            d_reader = csv.DictReader(spread_sheet)
-            # setting the headers to a variable
-            headers = d_reader.fieldnames
-            # If it's not in the headers tell the user
-            if "PhoneNumberDialed" not in headers:
-                greeting.config(text="File Does Not Fit Specifications\n")
-            # Otherwise run the code
-            else:
-                # grab the index where the phone number is
-                phone_index = 0
-                target_index = 0
-                for header in headers:
-                    if header == "Response":
-                        break
-                    else:
-                        target_index+=1
-                greeting.config(text="File Fits Specs, Sorting")
-                reader = csv.reader(spread_sheet, delimiter=',')
-                for line in reader:
-                        if target_word in line[target_index]:
-                            rows.append(line)
-    except FileNotFoundError:
-        greeting.config(text="File Not Found\n"
-                             "Please Browse for Proper CSV File")
-    if target_word == voicemail:
-        try:
-            with open(voicemail_file_path, 'a') as output_file:
-                writer = csv.writer(output_file)
-                writer.writerows(rows)
-        except FileExistsError:
-            pass
-    elif target_word == disconnected:
-        try:
-            with open(disconnected_file_path, 'a') as output_file:
-                writer = csv.writer(output_file)
-                writer.writerows(rows)
-        except FileExistsError:
-            pass
-    rows.clear()
-"""
-
-"""
-# Fill all sheets for simplicity and single function for button use
-def fill_all_sheets():
-    # Set a value for filename based on the path that is browsed for by the user
-    # Setting it up this way allows for a single button press to browse and then sort
-    filename = browseFiles()
-    # With the function defined we can fill our call sheets
-    fill_call_sheet(disconnected, filename)
-    fill_call_sheet(voicemail, filename)
-"""
 
 # Functionality to browse for files, starting with CSV files as the default type to find, uses built-in
 # file explorer on Windows
@@ -285,20 +213,12 @@ def browseFiles():
                                             bg = colors['pink'])
             # Otherwise run the code
             else:
-                # grab the index where the phone number is
-                phone_index = 0
-                target_index = 0
-                for header in headers:
-                    if header == "Response":
-                        break
-                    else:
-                        target_index+=1
 
                 greeting.config(text="File Fits Specifications")
                 label_call_log_found.config(bg=colors['green'],
                                                 text="File Found")
 
-    except FileNotFoundError:
+    except (FileNotFoundError,UnicodeDecodeError) as e:
         greeting.config(text="File Not Found\n"
                              "Please Browse for Proper CSV File")
 
@@ -345,7 +265,7 @@ def browseForHouseholdIDSheet():
                                                 text="File Found")
                 greeting.config(text="File Fits Specifications")
 
-    except FileNotFoundError:
+    except (FileNotFoundError, UnicodeDecodeError) as e:
         greeting.config(text="File Not Found\n"
                              "Please Browse for Proper CSV File")
 

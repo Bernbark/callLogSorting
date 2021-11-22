@@ -6,8 +6,16 @@ import csv
 import os
 import getpass
 from PIL import ImageTk, Image
-from datetime import datetime
+import tkinter.messagebox
 from apscheduler.schedulers.background import BackgroundScheduler
+
+"""
+This script allows a user to browse for two files to compare against, using phone numbers to match IDs to users and
+specify at time when the user wishes for the files to be automatically sorted, once per day.
+Both files include a Household ID as well as a timestamp for when they were called.
+The first file is for all users where the phone call reached their voicemail.
+The second file is for all users where the phone call was disconnected.
+"""
 
 disconnected_filename = ''
 voicemail_filename = ''
@@ -21,17 +29,6 @@ call_logs_filename = ''
 automated_runtime_minutes = 0
 automated_runtime_hour = 1
 am_pm_runtime = "AM"
-
-
-"""
-# If the number is disconnected then the script should, initially, 
-# generate a Disconnected file in a seperate folder, 
-# and if the file already exists append the new results to it.
-"""
-
-"""
-Need folder to be made automatically 
-"""
 
 # Grabbing user name for creation of a Desktop folder
 username = getpass.getuser()
@@ -48,34 +45,40 @@ if not os.path.isdir(path_str):
 # Headers are CallCompletedTimeStamp,PhoneNumberDialed,Response
 # ExactBillingDurationInSeconds,RoundedBillingDurationInMinutes
 def create_csv_files():
-    # make sure we need a header by checking if we've already made this file
+    """
+    This method will create 2 separate CSV files and apply headers to them if they don't exist yet
+    :return:
+    """
 
-
+    # Alter the file name to be a default if nothing was chosen
     if disconnected_filename == "":
         disconnected_file_path = path_str + "\\DisconnectedCallSheet.csv"
+    # Otherwise use the file name provided by the user
     else:
         disconnected_file_path = path_str + "\\"+disconnected_filename
+        # Catchall in case things go south with the naming of files, force it back to default
         if disconnected_file_path == path_str+"\\"+".csv":
             disconnected_file_path = path_str + "\\DisconnectedCallSheet.csv"
-    print(disconnected_file_path)
+    # Create a bool to check if the file path exists
     file_exists = os.path.isfile(disconnected_file_path)
     try:
+        # Either create and add headers, or do nothing, thus the 'a' setting
         with open(disconnected_file_path, 'a') as output_file:
             writer = csv.writer(output_file)
             # set header if file doesn't exist
             if not file_exists:
                 writer.writerow(["Household ID","Phone Number","Call Timestamp"])
+    # If the file exists then do nothing
     except FileExistsError:
         pass
-    print(disconnected_filename + " disconnected file name")
 
+    # This is the same as thing as above except for the voicemail file name
     if voicemail_filename == "":
         voicemail_filepath = path_str + "\\VoicemailCallSheet.csv"
     else:
         voicemail_filepath = path_str + "\\"+voicemail_filename
         if voicemail_filepath == path_str+"\\"+".csv":
             voicemail_filepath = path_str + "\\VoicemailCallSheet.csv"
-    print(voicemail_filepath)
     file_exists = os.path.isfile(voicemail_filepath)
     try:
         with open(voicemail_filepath, 'a') as output_file:
@@ -85,37 +88,53 @@ def create_csv_files():
                 writer.writerow(["Household ID","Phone Number","Call Timestamp"])
     except FileExistsError:
         pass
-    print(voicemail_filename + " voicemail file name")
 
 
 def getHouseholdID(household_ids,call_logs,file_path,target_word):
+    """
+    This method takes two files and searches and strips them of the appropriate information in order to make a comparison
+    and sort based on whether the customer disconnected or a voicemail was left, and then puts that information into
+    a csv file based on the given file path.
+    :param household_ids: path to file chosen by user to compare household IDs
+    :param call_logs: path to file chosen by user that contains unsorted call logs
+    :param file_path: either path to disconnected or voicemail file which will have new records appended to it
+    :param target_word: target word to be searched and sorted, in this case Disconnected or Answering_Machine
+    :return: nothing
+    """
+    # holds the information from household IDs file
     id_rows = []
-    count = 0
+    # will be used throughout in order to track which column the id exists in the .csv file
     id_index = 0
+
+    # Open the household IDs file and strip the header
     with open(household_ids, 'r') as id_log:
         reader = csv.reader(id_log)
         d_reader = csv.DictReader(id_log)
         # setting the headers to a variable
         headers = d_reader.fieldnames
+        # once the header for ID is found, break, otherwise keep increasing the id_index
+        # this is useful if we know the headers ahead of time
         for header in headers:
             if "ID" in header:
                 break
             else:
                 id_index+=1
+        # read the entire document, line by line, as entrys into id_rows
         for line in reader:
-
             id_rows.append(line)
 
-    phone_rows = []
     with open(call_logs, 'r') as call_log:
         # DictReader will help pull headers from spreadsheets
         d_reader = csv.DictReader(call_log)
         # setting the headers to a variable
         headers = d_reader.fieldnames
         reader = csv.reader(call_log)
+        # these indexes are used to give some fluidity to finding the proper column from which to strip information from
+        # .csv files, we can call on id_rows[id_index] knowing that for every row in that index will hold info we want
         target_index = 0
         phone_index = 0
         date_index = 0
+        # Messy way of finding headers, can probably be combined into a single loop
         for header in headers:
             if header == "Response":
                 break
@@ -131,54 +150,41 @@ def getHouseholdID(household_ids,call_logs,file_path,target_word):
                 break
             else:
                 date_index += 1
-        date_list = []
+        # Depending on if we're checking for Disconnected or Answering_Machine target word, add the correct lines to
+        # rows list, with only the correct information from each line, as a tuple
         for line in reader:
             if target_word in line[target_index]:
-                #print(line[date_index])
-
-
-
                 rows.append((line[phone_index],line[date_index]))
-
-
+        # Now that rows is formed
         for entry in rows:
+            # For every id in id_rows
             for id in id_rows:
+                # Check if the current entry matches the id fro the current id_row and form a new entry tuple with the
+                # right info
                 if entry[0] == id[1]:
                     entry = (id[id_index],)+entry
-
+                    # Finally write that new entry into the output file
                     with open(file_path, 'a+') as output_file:
                         writer = csv.writer(output_file)
                         writer.writerow(entry)
-
-            count += 1
-
+        # Probably not necessary, something left over from testing
         rows.clear()
+        # Same as above
         id_rows.clear()
 
-    #with open(file_path,'a') as output_file:
 
-        #writer = csv.writer(output_file)
-        #writer.writerows(phone_rows)
-        """
-        for row1, row2 in zip_longest(phone_rows, id_rows):
-            try:
-                if row1[1] == row2[1]:
-                    writer.writerow(rows)
-                    rows.clear()
-                else:
-                    pass
-            except TypeError:
-                pass
-                """
-
-
-# for use with the button to sort once files are selected
 def get_all_household_id():
+    """
+    When the time for sorting occurs, this method will grab the file names provided by the user, or provide default
+    names, and then create CSV files or append to them if they exist already, while also getting the ID and timestamp
+    for both voicemail and disconnected calls
+    """
     global disconnected_filename
     disconnected_filename = onDisconnectedSaveEntry()
 
     global voicemail_filename
     voicemail_filename = onVoicemailSaveEntry()
+    # Extra checks to make sure the file names work, probably not necessary, but just for safety
     if voicemail_filename == "":
         voicemail_filename = "VoicemailCallSheet.csv"
     else:
@@ -187,37 +193,57 @@ def get_all_household_id():
         disconnected_filename = "DisconnectedCallSheet.csv"
     else:
         disconnected_filename = disconnected_filename + ".csv"
+    # Create files or pass if they exist
     create_csv_files()
+    # Creates the voicemail sorted file
     getHouseholdID(household_id_filename, call_logs_filename, path_str + "\\" + voicemail_filename, voicemail)
+    # Creates the disconnected call file
     getHouseholdID(household_id_filename, call_logs_filename, path_str + "\\" + disconnected_filename, disconnected)
-    now = datetime.now()
-
-    current_time = now.strftime("%H:%M:%S")
-    print("Sceduler started sort at:" + current_time)
+    # Get sorting time
+    current_time = get_hour_and_minutes()
+    # Update the user on when the sorting happened
+    greeting.config(text="Sceduler started sort at: " + current_time)
+    notify = check_if_notify.get()
+    # If the user checked the box for notifications, send a pop up message claiming that sorting has completed
+    if notify == 1:
+        tk.messagebox.showinfo("Sorting Complete", "Your files were sorted at " + current_time)
 
 
 def get_minutes():
+    """
+    Pull the information from minutes drop down menu for automation
+    :return: minutes
+    """
     minutes = minute_option_var.get()
     return minutes
 
 
 def get_hour():
+    """
+    Get the information regarding whether automation was desired at AM or PM, then get the information for the hour,
+    and using that information reformat the hour to display for the user appropriately
+    :return:
+    """
     night_or_day = am_pm_option_var.get()
+    unfiltered_hour = hour_option_var.get()
+    hour = int(unfiltered_hour.replace(":", ""))
     if "AM" in night_or_day:
-        unfiltered_hour = hour_option_var.get()
-        hour = int(unfiltered_hour.replace(":",""))
+        # At 12:00 AM it always shows 00:00 AM without this
         if hour == 12:
             hour = 0
         return str(hour)
     else:
-        unfiltered_hour = hour_option_var.get()
-        hour = int(unfiltered_hour.replace(":", ""))
         if hour != 12:
             hour += 12
         return str(hour)
 
 
 def get_hour_and_minutes():
+    """
+    Receives the hour, AM or PM, and the minute desired to run the program, and then returns a well formatted string
+    for the user to see when the sorting ran in standard time
+    :return:
+    """
     minutes = get_minutes()
     hour = int(get_hour())
     am_pm = am_pm_option_var.get()
@@ -229,6 +255,12 @@ def get_hour_and_minutes():
 
 
 def auto_sort():
+    """
+    Connected to the button to automate sorting, takes the hour and minutes desired by the user, note that the way
+    get_hour is set up is to give us military time (0-23) which is what the APScheduler desires. This method then starts
+    a schedule to be run once a day at the user's desired time.
+    :return: nothing
+    """
     greeting.config(text="Automated Sort Scheduled for "+get_hour_and_minutes())
     scheduler = BackgroundScheduler()
     scheduler.add_job(get_all_household_id, 'cron', day='*', hour=get_hour(), minute=get_minutes(), second='0')
@@ -238,6 +270,12 @@ def auto_sort():
 # Functionality to browse for files, starting with CSV files as the default type to find, uses built-in
 # file explorer on Windows
 def browseFiles():
+    """
+    Method which is used to browse for files, it is hooked up to the Browse for Call Logs button, so this one is used
+    to search for and double check the validity of call logs files
+    :return:
+    """
+    # Sets up browsing with the ability to search all files, .csv, or .txt files, defaulted to csv
     filename = filedialog.askopenfilename(initialdir = "/",
                                           title = "Select Unsorted Call Logs",
                                           filetypes = (("CSV files",
@@ -247,6 +285,7 @@ def browseFiles():
                                                        ("all files",
                                                         "*.*")))
     try:
+        # Read the browsed for file to check for validity
         with open(filename) as spread_sheet:
             # DictReader will help pull headers from spreadsheets
             d_reader = csv.DictReader(spread_sheet)
@@ -258,22 +297,13 @@ def browseFiles():
                 label_call_log_found.config(text = "Missing Unsorted\n"
                                                    "Call Logs Sheet",
                                             bg = colors['pink'])
-            # Otherwise run the code
+            # Otherwise alert the user that their file probably works
             else:
-                # grab the index where the phone number is
-                phone_index = 0
-                target_index = 0
-                for header in headers:
-                    if header == "Response":
-                        break
-                    else:
-                        target_index+=1
-
                 greeting.config(text="File Fits Specifications")
                 label_call_log_found.config(bg=colors['green'],
                                                 text="File Found")
 
-    except FileNotFoundError:
+    except (FileNotFoundError, UnicodeDecodeError) as e:
         greeting.config(text="File Not Found\n"
                              "Please Browse for Proper CSV File")
 
@@ -319,19 +349,23 @@ def browseForHouseholdIDSheet():
                 label_household_id_found.config(bg=colors['green'],
                                                 text="File Found")
                 greeting.config(text="File Fits Specifications")
-
-    except FileNotFoundError:
+    # Have to make sure the user isn't putting strange files in
+    except (FileNotFoundError, UnicodeDecodeError) as e:
         greeting.config(text="File Not Found\n"
                              "Please Browse for Proper CSV File")
-
-    label_file_explorer.configure(text="File Opened: "+filename)
+    # Display file name
+    label_file_explorer.configure(text=filename)
+    # This needs to be changed globally so that the second browse method is aware of the first's success
     global household_id_found
     household_id_found = True
-
+    # If both browses were successful then we activate the sort button
     if call_logs_found and household_id_found:
         button_sort.config(state="normal")
+    # Otherwise disable it
     else:
         button_sort.config(state="disabled")
+    # This may not be the right way to do things, but because of how I adapted the UI, this seemed like the easiest way
+    # to update the filename globally as opposed to returning a value
     global household_id_filename
     household_id_filename = filename
 
@@ -569,6 +603,10 @@ am_pm_option_var = tk.StringVar(option_menus_frame)
 am_pm_option_var.set(am_pm_option[0])
 am_pm_menu = tk.OptionMenu(option_menus_frame, am_pm_option_var, *am_pm_option)
 am_pm_menu.pack(side=tk.LEFT)
+
+check_if_notify = tk.IntVar()
+notification_checkbox = tk.Checkbutton(option_menus_frame,text="Notify When Complete",variable=check_if_notify)
+notification_checkbox.pack(side=tk.RIGHT)
 
 window.mainloop()
 
