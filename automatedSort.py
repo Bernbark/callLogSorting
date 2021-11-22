@@ -6,7 +6,8 @@ import csv
 import os
 import getpass
 from PIL import ImageTk, Image
-from apscheduler.schedulers.blocking import BlockingScheduler
+from datetime import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
 
 disconnected_filename = ''
 voicemail_filename = ''
@@ -21,14 +22,6 @@ automated_runtime_minutes = 0
 automated_runtime_hour = 1
 am_pm_runtime = "AM"
 
-
-def cron_process():
-    print ('periodic print')
-
-
-scheduler = BlockingScheduler()
-scheduler.add_job(cron_process, 'cron', day='*', hour='1', minute='57',second='0')
-#scheduler.start()
 
 """
 # If the number is disconnected then the script should, initially, 
@@ -197,9 +190,15 @@ def get_all_household_id():
     create_csv_files()
     getHouseholdID(household_id_filename, call_logs_filename, path_str + "\\" + voicemail_filename, voicemail)
     getHouseholdID(household_id_filename, call_logs_filename, path_str + "\\" + disconnected_filename, disconnected)
+    now = datetime.now()
+
+    current_time = now.strftime("%H:%M:%S")
+    print("Sceduler started sort at:" + current_time)
+
 
 def get_minutes():
-    return minute_option_var.get()
+    minutes = minute_option_var.get()
+    return minutes
 
 
 def get_hour():
@@ -209,16 +208,25 @@ def get_hour():
         hour = int(unfiltered_hour.replace(":",""))
         if hour == 12:
             hour = 0
-        print(hour)
-        return hour
+        return str(hour)
     else:
         unfiltered_hour = hour_option_var.get()
         hour = int(unfiltered_hour.replace(":", ""))
         if hour != 12:
             hour += 12
-        print(hour)
-        return hour
+        return str(hour)
 
+
+def get_hour_and_minutes():
+    get_minutes()
+    get_hour()
+
+
+def auto_sort():
+    greeting.config(text="File Fits Specifications")
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(get_all_household_id, 'cron', day='*', hour=get_hour(), minute=get_minutes(), second='0')
+    scheduler.start()
 
 """
 Need to search for all successful answering machine calls and disconnected calls
@@ -403,9 +411,17 @@ colors = {
 
 minute_options = [
     "00",
+    "05",
+    "10",
     "15",
+    "20",
+    "25",
     "30",
-    "45"
+    "35",
+    "40",
+    "45",
+    "50",
+    "55"
 ]
 
 hour_options = [
@@ -504,7 +520,6 @@ tip.bind_widget(disconnected_file_name_entry,balloonmsg="Enter file name for voi
                                            "(Will be saved as .csv)")
 
 bottomFrame = tk.Frame(window)
-#bottomFrame.config(background=colors['blue'])
 bottomFrame.config(borderwidth=4)
 bottomFrame.config(bg=colors['dark purple'])
 # Have to specifically call on tk to get the right frame type
@@ -588,7 +603,7 @@ button_sort = tk.Button(window,
                         borderwidth=10,
                         font=("Helvetica", 25),
                         state="disabled",
-                        command = lambda : get_all_household_id())
+                        command = auto_sort)
 button_sort.pack(padx=5,pady=3)
 tip.bind_widget(button_sort,balloonmsg="Hit this to make 2 CSV files,\n"
                                        "one for calls that went to voicemail,\n"
@@ -601,9 +616,6 @@ hour_option_var = tk.StringVar(option_menus_frame)
 hour_option_var.set(hour_options[0])
 hour_option_menu = tk.OptionMenu(option_menus_frame, hour_option_var, *hour_options)
 hour_option_menu.pack(side=tk.LEFT)
-
-test_hour = tk.Button(option_menus_frame,command=get_hour)
-test_hour.pack()
 
 minute_option_var = tk.StringVar(option_menus_frame)
 minute_option_var.set(minute_options[0])
