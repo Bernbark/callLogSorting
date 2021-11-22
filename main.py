@@ -453,9 +453,20 @@ tip.bind_widget(disconnected_file_name_entry,balloonmsg="Enter file name for voi
 bottomFrame = tk.Frame(window)
 bottomFrame.config(background=colors['blue'])
 bottomFrame.config(borderwidth=10)
-bottomFrame.config(bg=colors['dark purple'])
+bottomFrame.config(bg=colors['light blue'])
 # Have to specifically call on tk to get the right frame type
-bottomFrame.pack(side=tk.BOTTOM)
+bottomFrame.pack(side=tk.TOP)
+
+button_sort = tk.Button(bottomFrame,
+                        text="Sort",
+                        borderwidth=10,
+                        font=("Helvetica", 25),
+                        state="disabled",
+                        command = lambda : get_all_household_id())
+button_sort.pack(padx=5,pady=3,side=tk.TOP)
+tip.bind_widget(button_sort,balloonmsg="Hit this to make 2 CSV files,\n"
+                                       "one for calls that went to voicemail,\n"
+                                       "and another for disconnected calls")
 
 bottomLeftFrame= tk.Frame(bottomFrame)
 bottomLeftFrame.config(background=colors['blue'])
@@ -529,17 +540,6 @@ label_call_log_found = tk.Label(bottomRightFrame,
                                     height = 10,
                                     bg = colors['pink'])
 label_call_log_found.pack(side=tk.BOTTOM,padx=30)
-
-button_sort = tk.Button(window,
-                        text="Sort",
-                        borderwidth=10,
-                        font=("Helvetica", 25),
-                        state="disabled",
-                        command = lambda : get_all_household_id())
-button_sort.pack(padx=5,pady=3)
-tip.bind_widget(button_sort,balloonmsg="Hit this to make 2 CSV files,\n"
-                                       "one for calls that went to voicemail,\n"
-                                       "and another for disconnected calls")
 
 
 window.mainloop()

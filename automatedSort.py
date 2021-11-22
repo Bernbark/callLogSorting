@@ -218,79 +218,22 @@ def get_hour():
 
 
 def get_hour_and_minutes():
-    get_minutes()
-    get_hour()
+    minutes = get_minutes()
+    hour = int(get_hour())
+    am_pm = am_pm_option_var.get()
+    if hour > 12 and am_pm != "AM":
+        hour -= 12
+    if hour == 0:
+        hour = 12
+    return str(hour)+":"+minutes+" "+am_pm
 
 
 def auto_sort():
-    greeting.config(text="File Fits Specifications")
+    greeting.config(text="Automated Sort Scheduled for "+get_hour_and_minutes())
     scheduler = BackgroundScheduler()
     scheduler.add_job(get_all_household_id, 'cron', day='*', hour=get_hour(), minute=get_minutes(), second='0')
     scheduler.start()
 
-"""
-Need to search for all successful answering machine calls and disconnected calls
-"""
-
-"""
-# This function takes a string and searches for instances of that string in a
-# csv file then fills another csv file with only the rows targeted
-# Note that we are checking the 3rd column for "Answering_Machine" or "Disconnected"
-def fill_call_sheet(target_word,filename):
-    try:
-        with open(filename) as spread_sheet:
-            # DictReader will help pull headers from spreadsheets
-            d_reader = csv.DictReader(spread_sheet)
-            # setting the headers to a variable
-            headers = d_reader.fieldnames
-            # If it's not in the headers tell the user
-            if "PhoneNumberDialed" not in headers:
-                greeting.config(text="File Does Not Fit Specifications\n")
-            # Otherwise run the code
-            else:
-                # grab the index where the phone number is
-                phone_index = 0
-                target_index = 0
-                for header in headers:
-                    if header == "Response":
-                        break
-                    else:
-                        target_index+=1
-                greeting.config(text="File Fits Specs, Sorting")
-                reader = csv.reader(spread_sheet, delimiter=',')
-                for line in reader:
-                        if target_word in line[target_index]:
-                            rows.append(line)
-    except FileNotFoundError:
-        greeting.config(text="File Not Found\n"
-                             "Please Browse for Proper CSV File")
-    if target_word == voicemail:
-        try:
-            with open(voicemail_file_path, 'a') as output_file:
-                writer = csv.writer(output_file)
-                writer.writerows(rows)
-        except FileExistsError:
-            pass
-    elif target_word == disconnected:
-        try:
-            with open(disconnected_file_path, 'a') as output_file:
-                writer = csv.writer(output_file)
-                writer.writerows(rows)
-        except FileExistsError:
-            pass
-    rows.clear()
-"""
-
-"""
-# Fill all sheets for simplicity and single function for button use
-def fill_all_sheets():
-    # Set a value for filename based on the path that is browsed for by the user
-    # Setting it up this way allows for a single button press to browse and then sort
-    filename = browseFiles()
-    # With the function defined we can fill our call sheets
-    fill_call_sheet(disconnected, filename)
-    fill_call_sheet(voicemail, filename)
-"""
 
 # Functionality to browse for files, starting with CSV files as the default type to find, uses built-in
 # file explorer on Windows
