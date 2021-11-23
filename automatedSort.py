@@ -29,16 +29,18 @@ call_logs_filename = ''
 automated_runtime_minutes = 0
 automated_runtime_hour = 1
 am_pm_runtime = "AM"
+call_reports_folder = "CallReports"
 
 # Grabbing user name for creation of a Desktop folder
 username = getpass.getuser()
 
 # C:\Users\UserName\Desktop\CallReports is the format
-path_str = "C:\\Users\\" + username + "\\Desktop\\CallReports"
+path_str = "C:\\Users\\" + username + "\\Desktop\\"
+voicemail_path_str = path_str+call_reports_folder
 disconnected_path_str = "C:\\Users\\" + username + "\\Desktop\\CallReports\\DisconnectedCalls"
 # If the directory does not exist, we make it using the above path
-if not os.path.isdir(path_str):
-    os.makedirs(path_str)
+if not os.path.isdir(voicemail_path_str):
+    os.makedirs(voicemail_path_str)
 if not os.path.isdir(disconnected_path_str):
     os.makedirs(disconnected_path_str)
 
@@ -76,11 +78,11 @@ def create_csv_files():
 
     # This is the same as thing as above except for the voicemail file name
     if voicemail_filename == "":
-        voicemail_filepath = path_str + "\\VoicemailCallSheet.csv"
+        voicemail_filepath = voicemail_path_str + "\\VoicemailCallSheet.csv"
     else:
-        voicemail_filepath = path_str + "\\"+voicemail_filename
-        if voicemail_filepath == path_str+"\\"+".csv":
-            voicemail_filepath = path_str + "\\VoicemailCallSheet.csv"
+        voicemail_filepath = voicemail_path_str + "\\"+voicemail_filename
+        if voicemail_filepath == voicemail_path_str+"\\"+".csv":
+            voicemail_filepath = voicemail_path_str + "\\VoicemailCallSheet.csv"
     file_exists = os.path.isfile(voicemail_filepath)
     try:
         with open(voicemail_filepath, 'a',newline='',) as output_file:
@@ -199,7 +201,7 @@ def get_all_household_id():
     # Create files or pass if they exist
     create_csv_files()
     # Creates the voicemail sorted file
-    get_household_id(household_id_filename, call_logs_filename, path_str + "\\" + voicemail_filename, voicemail)
+    get_household_id(household_id_filename, call_logs_filename, voicemail_path_str + "\\" + voicemail_filename, voicemail)
     # Creates the disconnected call file
     get_household_id(household_id_filename, call_logs_filename, disconnected_path_str + "\\" + disconnected_filename,
                      disconnected)
@@ -466,7 +468,7 @@ window.title("Call Sheet Sorter")
 window.config(background=colors['dark grey'],
               bd=10)
 # Create an image
-company_logo = ImageTk.PhotoImage(Image.open("trgicon.PNG"))
+company_logo = ImageTk.PhotoImage(Image.open(path_str+"sorting\\trgicon.PNG"))
 # Create a frame to hold the company logo and potentially other information
 info_frame = tk.Frame(window)
 info_frame.config(bg=colors['dark grey'])
