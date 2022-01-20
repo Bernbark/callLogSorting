@@ -30,6 +30,6 @@ Please seperate the final project into 2 distinct scripts.
 
 Remember the ultimate goal of this script is to allow for someone with little to no technical knowledge to be able to interact with and recieve the output.
 
-When you have completed the project please zip all relevant files and send them to me at tommy.maxwell@retiregroup.com.  If the files end up being too big for email let me know and I will generate a quick way for you to get them to me.
+When you have completed the project please zip all relevant files and send them to me at (redacted) If the files end up being too big for email let me know and I will generate a quick way for you to get them to me.
 
 Good Luck and let me know if you have any questions.

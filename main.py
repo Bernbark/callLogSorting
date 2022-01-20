@@ -1,11 +1,11 @@
 from __future__ import print_function
-import tkinter.tix as tix
+#import tkinter.tix as tix
 import tkinter as tk
 from tkinter import filedialog
 import csv
 import os
 import getpass
-from PIL import ImageTk, Image
+#from PIL import ImageTk, Image
 
 """
 This script allows a user to browse for two files to compare against, using phone numbers to match IDs to users and sort
@@ -338,7 +338,7 @@ padding = 3
 """
 
 # Create the root window for the whole GUI
-window = tix.Tk()
+window = tk.Tk()
 # Set the window to fit the user's screen
 window.geometry("{0}x{1}+0+0".format(
             window.winfo_screenwidth()-padding, window.winfo_screenheight()-padding))
@@ -346,7 +346,7 @@ window.title("Call Sheet Sorter")
 window.config(background=colors['dark grey'],
               bd=10)
 # Create an image
-company_logo = ImageTk.PhotoImage(Image.open("trgicon.PNG"))
+#company_logo = ImageTk.PhotoImage(Image.open("trgicon.PNG"))
 # Create a frame to hold the company logo and potentially other information
 info_frame = tk.Frame(window)
 info_frame.config(bg=colors['dark grey'])
@@ -385,7 +385,7 @@ label_file_explorer = tk.Label(topFrame,
 label_file_explorer.pack(padx=5, pady=5, side=tk.BOTTOM)
 # Holds the company logo
 canvas = tk.Canvas(info_frame, width=450, height=80, bg=colors['light blue'])
-canvas.create_image(15,7, anchor=tk.NW,image=company_logo)
+#canvas.create_image(15,7, anchor=tk.NW,image=company_logo)
 canvas.pack(padx=5, pady=5)
 # Frame which holds the entry sections and their labels (where users can change file names)
 middleFrame = tk.Frame(window,)

@@ -1,5 +1,4 @@
 from __future__ import print_function
-import tkinter.tix as tix
 import tkinter as tk
 from tkinter import filedialog
 import csv
@@ -8,6 +7,8 @@ import getpass
 from PIL import ImageTk, Image
 import tkinter.messagebox
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers import cron
+
 
 """
 This script allows a user to browse for two files to compare against, using phone numbers to match IDs to users and
@@ -184,6 +185,7 @@ def get_all_household_id():
     names, and then create CSV files or append to them if they exist already, while also getting the ID and timestamp
     for both voicemail and disconnected calls
     """
+    greeting.config(text="Scheduler started working")
     global disconnected_filename
     disconnected_filename = on_disconnected_save_entry()
 
@@ -198,11 +200,14 @@ def get_all_household_id():
         disconnected_filename = "DisconnectedCallSheet.csv"
     else:
         disconnected_filename = disconnected_filename + ".csv"
+    greeting.config(text="Scheduler started creating csv files")
     # Create files or pass if they exist
     create_csv_files()
     # Creates the voicemail sorted file
+    greeting.config(text="Scheduler started creating voicemail files")
     get_household_id(household_id_filename, call_logs_filename, voicemail_path_str + "\\" + voicemail_filename, voicemail)
     # Creates the disconnected call file
+    greeting.config(text="Scheduler started creating call log files")
     get_household_id(household_id_filename, call_logs_filename, disconnected_path_str + "\\" + disconnected_filename,
                      disconnected)
     # Get sorting time
@@ -237,11 +242,14 @@ def get_hour():
         # At 12:00 AM it always shows 00:00 AM without this
         if hour == 12:
             hour = 0
-        return str(hour)
+        return "0"+str(hour)
     else:
         if hour != 12:
             hour += 12
-        return str(hour)
+    if hour < 10:
+        return "0"+str(hour)
+
+    return str(hour)
 
 
 def get_hour_and_minutes():
@@ -267,10 +275,15 @@ def auto_sort():
     a schedule to be run once a day at the user's desired time.
     :return: nothing
     """
-    greeting.config(text="Automated Sort Scheduled for "+get_hour_and_minutes())
+    print(get_hour()+":"+get_minutes())
     scheduler = BackgroundScheduler()
-    scheduler.add_job(get_all_household_id, 'cron', day='*', hour=get_hour(), minute=get_minutes(), second='0')
+    greeting.config(text="Scheduler active")
+    trigger = cron.CronTrigger(day='*', hour=get_hour(), minute=get_minutes(), second='0')
+    greeting.config(text="CronTrigger active")
+    scheduler.add_job(get_all_household_id, trigger, replace_existing=True)
     scheduler.start()
+    greeting.config(text="Automated Sort Scheduled for " + get_hour_and_minutes())
+
 
 
 # Functionality to browse for files, starting with CSV files as the default type to find, uses built-in
@@ -420,14 +433,27 @@ colors = {
 minute_options = [
     "00",
     "05",
+    "06",
+    "07",
+    "08",
+    "09",
     "10",
+    "11",
+    "12",
+    "13",
+    "14",
     "15",
     "20",
     "25",
     "30",
+    "33",
+    "34",
     "35",
     "40",
     "45",
+    "47",
+    "48",
+    "49",
     "50",
     "55"
 ]
@@ -460,7 +486,7 @@ padding = 3
         Also, must refer to widgets in tkinter with the prefix tk. in order to use them (ex: tk.Frame)
 """
 # Create the root window for the whole GUI
-window = tix.Tk()
+window = tk.Tk()
 # Set the window to fit the user's screen
 window.geometry("{0}x{1}+0+0".format(
             window.winfo_screenwidth()-padding, window.winfo_screenheight()-padding))
